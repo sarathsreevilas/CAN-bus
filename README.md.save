@@ -1,23 +1,4 @@
 
-**Standard Applied**: ISO/SAE 21434 – Automotive Cybersecurity
-
- // ISO/SAE 21434 COMPLIANCE
-
-This project aligns with core principles of ISO/SAE 21434 by simulating secure in-vehicle communication and threat mitigation strategies across the vehicle network lifecycle. It addresses the following key aspects of the standard:
-
-- **Threat and Risk Assessment (TARA):** The spoofing and flooding detection scripts demonstrate analysis of threat scenarios involving CAN message tampering.
-- **Secure Communication (SecOC):** Implementation of HMAC-based message authentication ensures message authenticity and integrity, directly relating to the Secure Onboard Communication (SecOC) concept.
-- **Monitoring and Response:** Logging, real-time anomaly detection, and data capture for forensic analysis are in line with the continuous monitoring requirements of ISO/SAE 21434.
-- **Cryptographic Measures:** Use of shared secret keys and hashing mechanisms simulates industry-accepted practices for protecting in-transit data in automotive ECUs.
-
-By building this project, I gained hands-on experience in applying the technical concepts described in ISO/SAE 21434, including message-level security, intrusion detection, and response mechanisms for connected vehicle systems.
-
-
-
-
-
-This project demonstrates a practical approach to securing in-vehicle communication using the Controller Area Network (CAN) protocol. It focuses on detecting spoofed or tampered CAN messages, implementing secure message transmission, and analyzing vehicle network data for anomalies.
-
 Developed as part of my Postgraduate Diploma in Cybersecurity – Automobility, this project reflects hands-on skills in CAN-bus spoofing analysis, HMAC-based message authentication, and basic intrusion detection strategies.
 
 ## Project Objectives

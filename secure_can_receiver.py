@@ -1,36 +1,44 @@
+# secure_can_receiver.py
+
 import can
 import hmac
 import hashlib
-from datetime import datetime
+import datetime
 
 channel = 'vcan0'
 interface = 'socketcan'
-shared_key = b'secret_key'  # Must match sender
+shared_key = b'secret_key'
 
-print("🔐 Secure CAN Receiver started...")
+last_seq = -1  # Tracks last accepted sequence number
+
+def get_mac(data):
+    return hmac.new(shared_key, data, hashlib.sha256).digest()[:2]
+
+print(" Secure CAN Receiver started...")
 
 bus = can.Bus(channel=channel, interface=interface)
 
-try:
-    while True:
-        msg = bus.recv()
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')
-        payload = msg.data
+while True:
+    msg = bus.recv()
+    if msg.arbitration_id == 0x456:
+        data = msg.data[:-2]
+        received_mac = msg.data[-2:]
+        expected_mac = get_mac(data)
 
-        if len(payload) < 3:
-            print(f"[{timestamp}] ⚠️ Skipping short message: {payload.hex()}")
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+
+        if received_mac != expected_mac:
+            print(f"[{timestamp}]  INVALID MAC")
             continue
 
-        data = payload[:-2]  # all but last 2 bytes
-        received_mac = payload[-2:]  # last 2 bytes
+        payload_data = data[:-1]
+        seq = data[-1]  # Extract 1-byte sequence number as int
 
-        # Recalculate HMAC
-        expected_mac = hmac.new(shared_key, data, hashlib.sha256).digest()[:2]
+        if seq <= last_seq:
+            print(f"[{timestamp}]  REPLAY DETECTED: Seq = {seq}, Last Seq = {last_seq}")
+            with open("replay_log.txt", "a") as f:
+                f.write(f"{timestamp} - REPLAY DETECTED: Seq={seq}, Last Seq={last_seq}\n")
+            continue
 
-        if expected_mac == received_mac:
-            print(f"[{timestamp}] ✅ VALID message from ID {hex(msg.arbitration_id)} | Data = {data.hex()} | MAC OK")
-        else:
-            print(f"[{timestamp}] ❌ TAMPERED or SPOOFED message from ID {hex(msg.arbitration_id)} | Data = {data.hex()} | Expected MAC = {expected_mac.hex()} | Received = {received_mac.hex()}")
-
-except KeyboardInterrupt:
-    print("\n🛑 Receiver stopped.")
+        last_seq = seq
+        print(f"[{timestamp}]  VALID message from ID 0x{msg.arbitration_id:X} | Data = {data.hex()} | MAC OK")
