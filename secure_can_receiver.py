@@ -1,44 +1,34 @@
-# secure_can_receiver.py
+# secure_can_sender.py
 
 import can
 import hmac
 import hashlib
-import datetime
+import time
+import struct
 
 channel = 'vcan0'
 interface = 'socketcan'
 shared_key = b'secret_key'
 
-last_seq = -1  # Tracks last accepted sequence number
-
 def get_mac(data):
-    return hmac.new(shared_key, data, hashlib.sha256).digest()[:2]
+    return hmac.new(shared_key, data, hashlib.sha256).digest()[:2]  # 2-byte HMAC
 
-print(" Secure CAN Receiver started...")
+print(" Secure CAN Sender with Timestamp started...")
 
 bus = can.Bus(channel=channel, interface=interface)
 
 while True:
-    msg = bus.recv()
-    if msg.arbitration_id == 0x456:
-        data = msg.data[:-2]
-        received_mac = msg.data[-2:]
-        expected_mac = get_mac(data)
+    data = bytearray([0x45, 0x67])  # 2-byte payload
+    timestamp = int(time.time())   # current UNIX timestamp (4 bytes)
+    ts_bytes = timestamp.to_bytes(4, 'big')  # 4 bytes
 
-        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    payload = data + ts_bytes                   # 6 bytes
+    mac = get_mac(payload)                      # 2 bytes
+    final_payload = payload + mac               # 8 bytes total
 
-        if received_mac != expected_mac:
-            print(f"[{timestamp}]  INVALID MAC")
-            continue
+    msg = can.Message(arbitration_id=0x456, data=final_payload, is_extended_id=False)
+    bus.send(msg)
 
-        payload_data = data[:-1]
-        seq = data[-1]  # Extract 1-byte sequence number as int
+    print(f" Sent: Data = {data.hex()} | Timestamp = {timestamp} | MAC = {mac.hex()}")
 
-        if seq <= last_seq:
-            print(f"[{timestamp}]  REPLAY DETECTED: Seq = {seq}, Last Seq = {last_seq}")
-            with open("replay_log.txt", "a") as f:
-                f.write(f"{timestamp} - REPLAY DETECTED: Seq={seq}, Last Seq={last_seq}\n")
-            continue
-
-        last_seq = seq
-        print(f"[{timestamp}]  VALID message from ID 0x{msg.arbitration_id:X} | Data = {data.hex()} | MAC OK")
+    time.sleep(1)
